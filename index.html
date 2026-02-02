@@ -1,156 +1,452 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Azhar AI Pro | Studio Edition</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        :root { --sidebar-bg: #171717; --main-bg: #212121; --input-bg: #2f2f2f; --accent: #19c37d; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--main-bg); color: #ececec; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pro ID Photo Studio</title>
+<style>
+  :root {
+    --primary: #4f46e5;
+    --dark: #1e293b;
+    --light: #f1f5f9;
+    --border: #cbd5e1;
+  }
+  body { font-family: sans-serif; background: var(--light); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+  
+  /* Layout */
+  .container { display: flex; gap: 20px; max-width: 1200px; width: 100%; flex-wrap: wrap; justify-content: center; }
+  .sidebar { flex: 1; min-width: 300px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 15px; height: fit-content; }
+  
+  /* Canvas Area */
+  .main-area { flex: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 350px; }
+  .canvas-wrapper { position: relative; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 2px solid white; overflow: hidden; background-image: conic-gradient(#eee 90deg, transparent 90deg), conic-gradient(transparent 90deg, #eee 90deg); background-size: 20px 20px; }
+  
+  /* Controls */
+  h2 { margin: 0 0 10px 0; font-size: 1.2rem; color: var(--dark); border-bottom: 2px solid var(--light); padding-bottom: 5px; }
+  label { font-size: 0.9rem; font-weight: 600; color: #64748b; display: block; margin-bottom: 5px; }
+  
+  .control-group { background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
+  
+  input[type="range"] { width: 100%; margin-bottom: 10px; }
+  select, input[type="file"] { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 10px; }
+  
+  .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  button { padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; background: var(--light); color: var(--dark); }
+  button:hover { background: #e2e8f0; }
+  button.active { background: var(--primary); color: white; }
+  .btn-primary { background: var(--primary); color: white; width: 100%; margin-top: 10px; }
+  .btn-primary:hover { background: #4338ca; }
 
-        /* Sidebar Interface */
-        .sidebar { width: 0; background: var(--sidebar-bg); transition: 0.3s ease; overflow: hidden; display: flex; flex-direction: column; z-index: 1000; height: 100%; }
-        .sidebar.active { width: 260px; border-right: 1px solid #3d3d3d; padding: 15px; }
-        .sidebar-item { padding: 12px; margin-bottom: 5px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: 0.2s; font-size: 14px; white-space: nowrap; }
-        .sidebar-item:hover { background: #2d2d2d; }
-        .new-chat { border: 1px solid #4d4d4d; margin-bottom: 20px; font-weight: bold; justify-content: center; }
+  /* Overlay Objects (Suits) */
+  .overlay-obj { position: absolute; cursor: grab; border: 1px dashed transparent; }
+  .overlay-obj:hover, .overlay-obj.selected { border: 1px dashed #3b82f6; }
+  
+  /* Asset Gallery */
+  .asset-list { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 5px; }
+  .asset-item { width: 50px; height: 50px; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; object-fit: contain; background: white; }
+  .asset-item:hover { border-color: var(--primary); }
 
-        /* Main Chat Area */
-        .main-content { flex: 1; display: flex; flex-direction: column; width: 100%; }
-        .header { padding: 15px 20px; display: flex; align-items: center; gap: 15px; background: var(--main-bg); border-bottom: 1px solid #3d3d3d; }
-        .menu-btn { font-size: 22px; cursor: pointer; color: #b4b4b4; }
-        .profile { display: flex; align-items: center; gap: 10px; }
-        .user-photo { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--accent); object-fit: cover; }
-
-        #chat-area { flex: 1; overflow-y: auto; padding: 30px 10%; display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth; }
-        .message { max-width: 85%; line-height: 1.6; font-size: 16px; word-wrap: break-word; }
-        .user-msg { text-align: right; background: var(--input-bg); padding: 12px 18px; border-radius: 18px; align-self: flex-end; color: #fff; }
-        .ai-msg { border-left: 3px solid var(--accent); padding: 5px 15px; align-self: flex-start; color: #d1d1d1; }
-
-        /* Bottom ChatGPT Style Input */
-        .bottom-container { padding: 20px 10%; background: var(--main-bg); }
-        .input-bar { background: var(--input-bg); border-radius: 28px; display: flex; align-items: center; padding: 8px 18px; border: 1px solid #4d4d4d; }
-        .plus-btn, .mic-btn { color: #b4b4b4; font-size: 20px; cursor: pointer; border: none; background: none; }
-        textarea { flex: 1; background: none; border: none; color: white; outline: none; font-size: 16px; resize: none; max-height: 150px; padding: 10px; font-family: inherit; }
-        .send-btn { background: #fff; color: #000; width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-left: 10px; }
-        
-        img.chat-img { width: 100%; max-width: 400px; border-radius: 12px; margin-top: 10px; border: 1px solid #4d4d4d; }
-    </style>
+  /* Crop Overlay */
+  #cropOverlay { position: absolute; top: 0; left: 0; pointer-events: none; border: 2px solid red; box-shadow: 0 0 0 9999px rgba(0,0,0,0.7); display: none; }
+</style>
 </head>
 <body>
 
-<div class="sidebar" id="sidebar">
-    <div class="sidebar-item new-chat" onclick="location.reload()"><i class="fas fa-plus"></i> New Chat</div>
-    <div class="sidebar-item"><i class="fas fa-history"></i> History</div>
-    <div class="sidebar-item" onclick="alert('Settings: Multi-language Mode ON')"><i class="fas fa-cog"></i> Settings</div>
-    <div class="sidebar-item" onclick="savePDF()"><i class="fas fa-file-pdf"></i> Download Chat PDF</div>
-    <div style="margin-top: auto; padding: 10px;">
-        <div class="sidebar-item" style="color: var(--accent);"><i class="fas fa-check-circle"></i> Azhar Verified Pro</div>
-    </div>
-</div>
+<h1>Professional ID Studio</h1>
 
-<div class="main-content">
-    <div class="header">
-        <i class="fas fa-bars menu-btn" onclick="toggleSidebar()"></i>
-        <div class="profile">
-            <img src="profile.jpg" class="user-photo" alt="Azhar" onerror="this.src='https://via.placeholder.com/32'">
-            <span style="font-weight: bold;">Azhar AI Pro <i class="fas fa-chevron-down" style="font-size: 10px; margin-left: 5px; color: #8e8e8e;"></i></span>
-        </div>
+<div class="container">
+  <div class="sidebar">
+    
+    <div class="control-group">
+      <h2>1. Source</h2>
+      <input type="file" id="uploadInput" accept="image/*">
+      <div class="btn-grid">
+        <button id="rotateLeftBtn">↺ -90°</button>
+        <button id="rotateRightBtn">↻ +90°</button>
+      </div>
     </div>
 
-    <div id="chat-area">
-        <div class="message ai-msg">Assalam-o-Alaikum Azhar! Main aapka humanized AI assistant hoon. Main har zubaan samajh sakta hoon. Aap file upload bhi kar sakte hain.</div>
+    <div class="control-group">
+      <h2>2. Size & Crop</h2>
+      <select id="sizeSelect">
+        <option value="35,45">Passport (35x45mm)</option>
+        <option value="51,51">US Visa (2x2 inch)</option>
+        <option value="30,40">CNIC/Card (30x40mm)</option>
+      </select>
+      <label>Zoom Image</label>
+      <input type="range" id="zoomRange" min="0.5" max="3" step="0.1" value="1">
+      <div class="btn-grid">
+        <button id="toggleCrop" class="active">Mode: Move Image</button>
+      </div>
     </div>
 
-    <div class="bottom-container">
-        <div class="input-bar">
-            <input type="file" id="fileAttach" style="display:none" onchange="handleFile(this)">
-            <button class="plus-btn" onclick="document.getElementById('fileAttach').click()"><i class="fas fa-plus-circle"></i></button>
-            
-            <textarea id="userInput" rows="1" placeholder="Message Azhar AI..." oninput="autoExpand(this)"></textarea>
-            
-            <button class="mic-btn" onclick="startMic()"><i class="fas fa-microphone"></i></button>
-            <button class="send-btn" onclick="askAI()"><i class="fas fa-arrow-up"></i></button>
-        </div>
+    <div class="control-group">
+      <h2>3. Tune Lighting</h2>
+      <label>Brightness</label>
+      <input type="range" id="brightRange" min="50" max="150" value="100">
+      <label>Contrast</label>
+      <input type="range" id="contrastRange" min="50" max="150" value="100">
+      <label>Saturation</label>
+      <input type="range" id="satRange" min="0" max="200" value="100">
     </div>
+
+    <div class="control-group">
+      <h2>4. Virtual Dress</h2>
+      <label>Select Suit to Overlay:</label>
+      <div class="asset-list">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgNjAiPjxwYXRoIGQ9Ik01MCw1IEM0MCwxMCAyMCw2MCAxMCw2MCBMOTAsNjAgQzgwLDYwIDYwLDEwIDUwLDUgWiIgZmlsbD0iIzMzMyIvPjxwYXRoIGQ9Ik01MCw1IEw1MCw2MCIgc3Ryb2tlPSIjMjIyIiBzdHJva2Utd2lkdGg9IjEiLz48cGF0aCBkPSJNNTAsNSBMNDAsMjAgTDUwLDMzIEw2MCwyMCBaIiBmaWxsPSJ3aGl0ZSIvPjxwYXRoIGQ9Ik01MCwzMyBMNTAsNjAiIHN0cm9rZT0iI2NjYyIgc3Ryb2tlLXdpZHRoPSIwLjUiLz48L3N2Zz4=" class="asset-item" onclick="addAsset(this.src)">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgNjAiPjxwYXRoIGQ9Ik01MCw1IEMzNSwxNSAxNSw2MCA1LDYwIEw5NSw2MCBDODUsNjAgNjUsMTUgNTAsNSBaIiBmaWxsPSIjMTkyOTNiIi8+PHBhdGggZD0iTTUwLDUgTDQyLDI1IEw1MCw0MCBMNTgsMjUgWiIgZmlsbD0id2hpdGUiLz48cGF0aCBkPSJNNTAsNDAgTDUwLDYwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==" class="asset-item" onclick="addAsset(this.src)">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgNjAiPjxwYXRoIGQ9Ik01MCw1IEM0MCwxMCAyMCw2MCAxMCw2MCBMOTAsNjAgQzgwLDYwIDYwLDEwIDUwLDUgWiIgZmlsbD0iIzZkMmMzMiIvPjxwYXRoIGQ9Ik01MCw1IEw0MCwyNSBMNTAsMzUgTDYwLDI1IFoiIGZpbGw9IiNmZmYiLz48L3N2Zz4=" class="asset-item" onclick="addAsset(this.src)">
+      </div>
+      <label style="margin-top:10px;">Or Upload PNG Suit:</label>
+      <input type="file" id="assetUpload" accept="image/png">
+      <div class="btn-grid">
+        <button onclick="clearAssets()">Clear Suit</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <h2>5. Background</h2>
+      <label>Background Color (Behind Image)</label>
+      <input type="color" id="bgColor" value="#ffffff">
+      <small style="color:#888;">*Only visible if your photo has transparency</small>
+    </div>
+
+    <button class="btn-primary" id="downloadBtn">Download HD Photo</button>
+  </div>
+
+  <div class="main-area">
+    <div class="canvas-wrapper" id="canvasContainer" style="width: 350px; height: 450px;">
+      <canvas id="mainCanvas"></canvas>
+      <div id="overlayLayer" style="position:absolute; top:0; left:0; width:100%; height:100%; overflow:hidden;"></div>
+    </div>
+    <p style="color:#666; margin-top:10px; font-size:0.9rem;">
+      <span id="dimsLabel">35 x 45 mm</span> | Scroll to Zoom | Drag to Move
+    </p>
+  </div>
 </div>
 
 <script>
-    // 1. Sidebar Toggle
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('active');
-    }
+  // --- Configuration ---
+  const CONFIG = {
+    printDPI: 300,
+    previewHeight: 450 // px height on screen
+  };
 
-    // 2. Auto Expand Textarea
-    function autoExpand(el) {
-        el.style.height = 'auto';
-        el.style.height = el.scrollHeight + 'px';
-    }
+  // --- DOM Elements ---
+  const uploadInput = document.getElementById('uploadInput');
+  const mainCanvas = document.getElementById('mainCanvas');
+  const ctx = mainCanvas.getContext('2d');
+  const overlayLayer = document.getElementById('overlayLayer');
+  const container = document.getElementById('canvasContainer');
+  
+  // Controls
+  const inputs = {
+    zoom: document.getElementById('zoomRange'),
+    bright: document.getElementById('brightRange'),
+    contrast: document.getElementById('contrastRange'),
+    sat: document.getElementById('satRange'),
+    bg: document.getElementById('bgColor'),
+    size: document.getElementById('sizeSelect'),
+    rotateL: document.getElementById('rotateLeftBtn'),
+    rotateR: document.getElementById('rotateRightBtn'),
+    assetUpload: document.getElementById('assetUpload')
+  };
 
-    // 3. Multilingual Chat Logic
-    async function askAI() {
-        const input = document.getElementById('userInput');
-        const text = input.value.trim();
-        if(!text) return;
+  // --- State ---
+  let img = new Image();
+  let state = {
+    x: 0, y: 0, scale: 1, rotation: 0,
+    baseW: 35, baseH: 45, // mm
+    aspect: 35/45
+  };
+  let isDragging = false;
+  let lastX, lastY;
 
-        const chatArea = document.getElementById('chat-area');
-        chatArea.innerHTML += `<div class="message user-msg">${text}</div>`;
-        input.value = '';
-        input.style.height = 'auto';
+  // --- Initialization ---
+  function init() {
+    updateCanvasSize();
+    // Load placeholder logic if needed
+    ctx.fillStyle = "#ccc";
+    ctx.font = "20px sans-serif";
+    ctx.fillText("Upload Image", 50, 50);
+  }
+
+  // --- 1. Image Handling ---
+  uploadInput.addEventListener('change', e => {
+    if(!e.target.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      img = new Image();
+      img.onload = () => {
+        // Reset state
+        state.rotation = 0;
+        state.scale = 1;
+        state.x = 0;
+        state.y = 0;
+        inputs.zoom.value = 1;
+        inputs.bright.value = 100;
         
-        const resDiv = document.createElement('div');
-        resDiv.className = 'message ai-msg';
-        resDiv.innerText = 'Searching...';
-        chatArea.appendChild(resDiv);
-        chatArea.scrollTop = chatArea.scrollHeight;
+        centerImage();
+        render();
+      };
+      img.src = evt.target.result;
+    };
+    reader.readAsDataURL(e.target.files[0]);
+  });
 
-        try {
-            // System prompt ensures it replies in user's language
-            const system = "Respond naturally in the same language the user is using. Be professional, human-like, and do not use coding symbols like stars or dashes.";
-            const res = await fetch(`https://text.pollinations.ai/${encodeURIComponent(text)}?system=${encodeURIComponent(system)}`);
-            const data = await res.text();
-            resDiv.innerText = data.replace(/[\\*_#-]/g, '').trim();
-        } catch (e) { resDiv.innerText = "Error: System busy. Try again."; }
-        chatArea.scrollTop = chatArea.scrollHeight;
-    }
+  function centerImage() {
+    // Fit image to canvas
+    const ratio = Math.min(mainCanvas.width / img.width, mainCanvas.height / img.height);
+    state.scale = ratio;
+    // Center
+    state.x = (mainCanvas.width - img.width * state.scale) / 2;
+    state.y = (mainCanvas.height - img.height * state.scale) / 2;
+    inputs.zoom.value = 1; // logical zoom
+  }
 
-    // 4. File/Photo Upload Display
-    function handleFile(input) {
-        const file = input.files[0];
-        if (file) {
-            const chatArea = document.getElementById('chat-area');
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                let content = '';
-                if (file.type.startsWith('image/')) {
-                    content = `<img src="${e.target.result}" class="chat-img"><br>`;
-                }
-                chatArea.innerHTML += `<div class="message user-msg">${content}📄 Attached: ${file.name}</div>`;
-                chatArea.scrollTop = chatArea.scrollHeight;
-            };
-            reader.readAsDataURL(file);
-        }
-    }
+  // --- 2. Canvas & Rendering ---
+  inputs.size.addEventListener('change', updateCanvasSize);
 
-    // 5. Mic Voice Input
-    function startMic() {
-        const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        rec.onresult = (e) => { 
-            document.getElementById('userInput').value = e.results[0][0].transcript;
-            askAI();
-        };
-        rec.start();
-    }
+  function updateCanvasSize() {
+    const [w, h] = inputs.size.value.split(',').map(Number);
+    state.baseW = w;
+    state.baseH = h;
+    state.aspect = w / h;
 
-    // 6. Save PDF
-    function savePDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.text(document.getElementById('chat-area').innerText, 10, 10, {maxWidth: 180});
-        doc.save("Azhar-AI-History.pdf");
+    // Set preview size (CSS)
+    const previewH = CONFIG.previewHeight;
+    const previewW = previewH * state.aspect;
+    
+    container.style.width = `${previewW}px`;
+    container.style.height = `${previewH}px`;
+    
+    // Set internal resolution (High Res)
+    mainCanvas.width = previewW * 2; // Retina/High quality internal buffer
+    mainCanvas.height = previewH * 2;
+
+    document.getElementById('dimsLabel').innerText = `${w} x ${h} mm`;
+    if(img.src) render();
+  }
+
+  function render() {
+    if (!img.src) return;
+
+    // Clear
+    ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+    
+    // Background fill
+    ctx.fillStyle = inputs.bg.value;
+    ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+
+    // Filters
+    const b = inputs.bright.value;
+    const c = inputs.contrast.value;
+    const s = inputs.sat.value;
+    ctx.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
+
+    // Transforms
+    ctx.save();
+    
+    // Move to center of canvas
+    ctx.translate(mainCanvas.width/2, mainCanvas.height/2);
+    ctx.rotate(state.rotation * Math.PI / 180);
+    
+    // The state.x/y are relative offsets. 
+    // We apply zoom here.
+    const finalScale = state.scale * inputs.zoom.value * (mainCanvas.width / (state.aspect * 400)); // normalized scale factor
+
+    ctx.translate(-img.width*finalScale/2 + state.x, -img.height*finalScale/2 + state.y);
+
+    ctx.drawImage(img, 0, 0, img.width * finalScale, img.height * finalScale);
+    
+    ctx.restore();
+    ctx.filter = 'none'; // Reset filter for next operations
+  }
+
+  // --- 3. Interaction (Pan & Zoom) ---
+  overlayLayer.addEventListener('mousedown', e => {
+    if(e.target !== overlayLayer) return; // Don't drag background if clicking a suit
+    isDragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    container.style.cursor = 'grabbing';
+  });
+
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const dx = (e.clientX - lastX) * 2; // *2 for canvas pixel density
+    const dy = (e.clientY - lastY) * 2;
+    
+    // Adjust position based on rotation logic helps, but let's keep it simple: 
+    // Moves the Image draw coordinates
+    if (state.rotation === 0) { state.x += dx; state.y += dy; }
+    else if (state.rotation === 90) { state.x += dy; state.y -= dx; }
+    else if (state.rotation === 180) { state.x -= dx; state.y -= dy; }
+    else if (state.rotation === 270) { state.x -= dy; state.y += dx; }
+    
+    lastX = e.clientX;
+    lastY = e.clientY;
+    render();
+  });
+
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+    container.style.cursor = 'default';
+  });
+
+  // Zoom Wheel
+  container.addEventListener('wheel', e => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    let newZoom = parseFloat(inputs.zoom.value) + delta;
+    newZoom = Math.min(Math.max(newZoom, 0.5), 3);
+    inputs.zoom.value = newZoom;
+    render();
+  });
+
+  // Slider Listeners
+  [inputs.zoom, inputs.bright, inputs.contrast, inputs.sat, inputs.bg].forEach(el => {
+    el.addEventListener('input', render);
+  });
+
+  // Rotation
+  inputs.rotateL.addEventListener('click', () => { state.rotation -= 90; render(); });
+  inputs.rotateR.addEventListener('click', () => { state.rotation += 90; render(); });
+
+  // --- 4. Suit/Asset Manager (The Professional Feature) ---
+  
+  window.addAsset = function(src) {
+    const el = document.createElement('img');
+    el.src = src;
+    el.className = 'overlay-obj';
+    el.style.width = '200px';
+    // Center in overlay layer
+    el.style.left = '50%';
+    el.style.top = '80%';
+    el.style.transform = 'translate(-50%, -50%)';
+    
+    // Add drag logic for the asset
+    makeInteractable(el);
+    overlayLayer.appendChild(el);
+  };
+
+  inputs.assetUpload.addEventListener('change', (e) => {
+    if(e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = evt => addAsset(evt.target.result);
+      reader.readAsDataURL(e.target.files[0]);
     }
+  });
+
+  window.clearAssets = function() {
+    overlayLayer.innerHTML = '';
+  };
+
+  // Basic Drag/Resize for Suits
+  function makeInteractable(el) {
+    let isDown = false;
+    let startX, startY;
+    
+    el.addEventListener('mousedown', e => {
+      isDown = true;
+      startX = e.clientX - el.offsetLeft;
+      startY = e.clientY - el.offsetTop;
+      
+      // Select visual
+      document.querySelectorAll('.overlay-obj').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      e.stopPropagation(); // Stop background panning
+    });
+
+    window.addEventListener('mousemove', e => {
+      if (!isDown) return;
+      el.style.left = (e.clientX - startX) + 'px';
+      el.style.top = (e.clientY - startY) + 'px';
+      el.style.transform = 'none'; // remove centering transform once moved
+    });
+
+    window.addEventListener('mouseup', () => { isDown = false; });
+    
+    // Resize on scroll over asset
+    el.addEventListener('wheel', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      let w = parseInt(el.style.width || el.clientWidth);
+      w += e.deltaY > 0 ? -10 : 10;
+      if (w > 20) el.style.width = w + 'px';
+    });
+  }
+
+  // --- 5. Final Download ---
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    // 1. Create a temp high-res canvas
+    const dlCanvas = document.createElement('canvas');
+    // MM to Pixels (300 DPI)
+    const targetW = Math.round(state.baseW * 11.81);
+    const targetH = Math.round(state.baseH * 11.81);
+    
+    dlCanvas.width = targetW;
+    dlCanvas.height = targetH;
+    const dlCtx = dlCanvas.getContext('2d');
+
+    // 2. Draw Background & Image (Scaled)
+    // We basically need to replay the render() logic but scaled to the final size
+    const scaleFactor = targetW / mainCanvas.width;
+    
+    dlCtx.fillStyle = inputs.bg.value;
+    dlCtx.fillRect(0, 0, targetW, targetH);
+    dlCtx.filter = ctx.filter; // Inherit filters
+    
+    dlCtx.save();
+    dlCtx.translate(targetW/2, targetH/2);
+    dlCtx.rotate(state.rotation * Math.PI / 180);
+    
+    const finalScale = state.scale * inputs.zoom.value * (mainCanvas.width / (state.aspect * 400));
+    // Apply final output scaling
+    const outScale = finalScale * scaleFactor;
+    
+    // Recalculate offsets for High Res
+    // Note: state.x is based on preview canvas pixels. We must scale it.
+    dlCtx.translate(
+        (-img.width*outScale/2) + (state.x * scaleFactor), 
+        (-img.height*outScale/2) + (state.y * scaleFactor)
+    );
+    
+    dlCtx.drawImage(img, 0, 0, img.width * outScale, img.height * outScale);
+    dlCtx.restore();
+    dlCtx.filter = 'none';
+
+    // 3. Draw Overlays (Suits)
+    const assets = document.querySelectorAll('.overlay-obj');
+    assets.forEach(asset => {
+      // Get position relative to the OverlayLayer (which is same size as mainCanvas)
+      // and scale it up to dlCanvas size
+      const rect = asset.getBoundingClientRect();
+      const parentRect = overlayLayer.getBoundingClientRect();
+      
+      const relativeX = rect.left - parentRect.left;
+      const relativeY = rect.top - parentRect.top;
+      
+      dlCtx.drawImage(
+        asset, 
+        relativeX * scaleFactor, 
+        relativeY * scaleFactor, 
+        rect.width * scaleFactor, 
+        rect.height * scaleFactor
+      );
+    });
+
+    // 4. Save
+    const link = document.createElement('a');
+    link.download = `ID_Photo_Pro_${state.baseW}x${state.baseH}.jpg`;
+    link.href = dlCanvas.toDataURL('image/jpeg', 0.95);
+    link.click();
+  });
+
+  // Start
+  init();
+
 </script>
 </body>
 </html>
